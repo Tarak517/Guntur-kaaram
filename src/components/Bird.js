@@ -1,25 +1,22 @@
-import React from "react";
+export const BIRD_HITBOX = {
+  offsetX: 10,
+  offsetY: 10,
+  width: 40,
+  height: 30,
+};
 
 export default function Bird({ y, img }) {
   return (
     <img
       src={img}
-      alt="bird"
+      alt=""
       style={{
         position: "absolute",
-        top: y,
         left: 80,
-        width: 120,
-        height: 120,
-        pointerEvents: "none",
+        top: y,
+        width: 90,
+        height: 90,
       }}
     />
   );
 }
-
-export const BIRD_HITBOX = {
-  width: 60,
-  height: 60,
-  offsetX: 30,
-  offsetY: 30,
-};

@@ -1,38 +1,31 @@
-import React from "react";
-
-export default function Pipe({
-  x,
-  gapY,
-  gapSize,
-  width,
-  img,
-  gameHeight,
-}) {
+// Pipe.js
+export default function Pipe({ x, gapY, gapSize, width, img, gameHeight }) {
   return (
     <>
+      {/* TOP PIPE (REVERSED) */}
       <img
         src={img}
-        alt="pipe-top"
+        alt=""
         style={{
           position: "absolute",
           left: x,
           top: 0,
-          width,
+          width: width,
           height: gapY,
-          objectFit: "cover",
+          transform: "rotate(180deg)",
         }}
       />
 
+      {/* BOTTOM PIPE (NORMAL) */}
       <img
         src={img}
-        alt="pipe-bottom"
+        alt=""
         style={{
           position: "absolute",
           left: x,
           top: gapY + gapSize,
-          width,
+          width: width,
           height: gameHeight - (gapY + gapSize),
-          objectFit: "cover",
         }}
       />
     </>

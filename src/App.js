@@ -32,10 +32,10 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
 
-  const BIRD_IMAGE = process.env.PUBLIC_URL + "/bird.png";
-  const PIPE_IMAGE = process.env.PUBLIC_URL + "/obstacle.png";
+  const BIRD_IMAGE = process.env.PUBLIC_URL + "/car.png";
+  const PIPE_IMAGE = process.env.PUBLIC_URL + "/obs.png";
 
-  /* ===== INIT AUDIO ===== */
+  /* ===== AUDIO ===== */
   useEffect(() => {
     gameOverAudio.current = new Audio(process.env.PUBLIC_URL + "/gameover.mp3");
     bgMusic.current = new Audio(process.env.PUBLIC_URL + "/background.mp3");
@@ -49,7 +49,7 @@ export default function App() {
     velocity.current += GRAVITY;
     birdY.current += velocity.current;
 
-    if (birdY.current < 0 || birdY.current > GAME_HEIGHT - 120) {
+    if (birdY.current < 0 || birdY.current > GAME_HEIGHT - 100) {
       endGame();
       return;
     }
@@ -80,12 +80,11 @@ export default function App() {
       const topPipeBottom = p.gapY;
       const bottomPipeTop = p.gapY + PIPE_GAP;
 
-      const padding = 2;
       if (
-        birdBox.right - padding > pipeLeft &&
-        birdBox.left + padding < pipeRight &&
-        (birdBox.top + padding < topPipeBottom ||
-          birdBox.bottom - padding > bottomPipeTop)
+        birdBox.right > pipeLeft &&
+        birdBox.left < pipeRight &&
+        (birdBox.top < topPipeBottom ||
+          birdBox.bottom > bottomPipeTop)
       ) {
         endGame();
       }
@@ -118,6 +117,13 @@ export default function App() {
 
   /* ===== GAME STATE ===== */
   const startGame = () => {
+    // STOP OLD AUDIO COMPLETELY
+    gameOverAudio.current.pause();
+    gameOverAudio.current.currentTime = 0;
+
+    bgMusic.current.pause();
+    bgMusic.current.currentTime = 0;
+
     birdY.current = GAME_HEIGHT / 2;
     velocity.current = 0;
     pipes.current = [];
@@ -128,18 +134,8 @@ export default function App() {
     gameRunning.current = true;
     frameRef.current = requestAnimationFrame(loop);
 
-    if (bgMusic.current) {
-      bgMusic.current.pause();
-      bgMusic.current.currentTime = 0;
-      bgMusic.current.play().catch((err) =>
-        console.warn("Autoplay blocked. Music will play after interaction.", err)
-      );
-    }
-
-    if (gameOverAudio.current) {
-      gameOverAudio.current.pause();
-      gameOverAudio.current.currentTime = 0;
-    }
+    // START BACKGROUND MUSIC FRESH
+    bgMusic.current.play().catch(() => {});
   };
 
   const endGame = () => {
@@ -148,39 +144,47 @@ export default function App() {
     gameRunning.current = false;
     cancelAnimationFrame(frameRef.current);
 
-    if (bgMusic.current) bgMusic.current.pause();
+    // STOP BACKGROUND MUSIC IMMEDIATELY
+    bgMusic.current.pause();
+    bgMusic.current.currentTime = 0;
 
-    setTimeout(() => {
-      setGameOver(true);
-      if (gameOverAudio.current) {
-        gameOverAudio.current.currentTime = 0;
-        gameOverAudio.current.play().catch((err) =>
-          console.warn("Game over sound error:", err)
-        );
-      }
-    }, 200);
+    setGameOver(true);
+
+    // PLAY GAME OVER MUSIC
+    gameOverAudio.current.currentTime = 0;
+    gameOverAudio.current.play().catch(() => {});
   };
 
   /* ===== UI ===== */
   return (
     <div style={outer}>
       <div style={gameBox}>
+
+        {/*  SCROLLING TEXT – MOVED UP */}
+        {gameOver && (
+          <div style={marqueeWrapper}>
+            <div style={marquee}>
+              #Theraarareooo &nbsp; Thereerareooo &nbsp; Tharararararaooooo &nbsp; oooooo#
+            </div>
+          </div>
+        )}
+
+        <img
+          src={process.env.PUBLIC_URL + "/finish.png"}
+          alt="finish"
+          style={destination}
+        />
+
         {!started && (
           <button style={centerBtn} onClick={startGame}>
-            Start Game
+            Start Journey
           </button>
         )}
 
         {gameOver && (
-          <>
-            <div style={gameOverText}>😢 Game Over</div>
-            <div style={marquee}>
-              theerarerareoooo theerarerareoooo theerarerareoooo theerarerareoooo rarerooooooooooo
-            </div>
-            <button style={centerBtn} onClick={startGame}>
-              Play Again
-            </button>
-          </>
+          <button style={centerBtn} onClick={startGame}>
+            Start again
+          </button>
         )}
 
         <Bird y={renderBirdY} img={BIRD_IMAGE} />
@@ -198,7 +202,7 @@ export default function App() {
         ))}
 
         {started && !gameOver && (
-          <button style={jumpBtn} onTouchStart={jump} onMouseDown={jump}>
+          <button style={jumpBtn} onMouseDown={jump} onTouchStart={jump}>
             ⬆️
           </button>
         )}
@@ -210,22 +214,25 @@ export default function App() {
 }
 
 /* ===== STYLES ===== */
+
 const outer = {
   height: "100vh",
-  background: "#111",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  background: "#111",
 };
 
 const gameBox = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  background: "#87CEEB",
   position: "relative",
   overflow: "hidden",
+  backgroundImage: `url(${process.env.PUBLIC_URL}/background.jpg)`,
+  backgroundSize: "100% 100%",
 };
 
+/*  RED START BUTTON */
 const centerBtn = {
   position: "absolute",
   top: "50%",
@@ -233,17 +240,11 @@ const centerBtn = {
   transform: "translate(-50%, -50%)",
   padding: "14px 26px",
   fontSize: "18px",
-  zIndex: 10,
-};
-
-const gameOverText = {
-  position: "absolute",
-  bottom: "160px",
-  width: "100%",
-  textAlign: "center",
-  fontSize: "26px",
-  color: "red",
-  zIndex: 10,
+  zIndex: 30,
+  background: "#d60000",
+  color: "#fff",
+  border: "none",
+  borderRadius: "6px",
 };
 
 const jumpBtn = {
@@ -254,26 +255,48 @@ const jumpBtn = {
   height: "70px",
   borderRadius: "50%",
   fontSize: "30px",
-  border: "none",
   background: "#ffcc00",
-  zIndex: 5,
+  border: "none",
+  zIndex: 30,
+};
+
+const destination = {
+  position: "absolute",
+  right: "5px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  width: "100px",
+  zIndex: 15,
+  pointerEvents: "none",
+};
+
+/* 🔴 RED STRIP – MOVED UP */
+const marqueeWrapper = {
+  position: "absolute",
+  bottom: "70px", // moved upward
+  width: "100%",
+  height: "45px",
+  background: "rgba(200, 0, 0, 0.65)",
+  overflow: "hidden",
+  zIndex: 35,
 };
 
 const marquee = {
   position: "absolute",
-  bottom: "120px",
   whiteSpace: "nowrap",
-  fontSize: "22px",
+  fontSize: "20px",
   color: "#fff",
-  animation: "scroll 8s linear infinite",
-  zIndex: 10,
+  fontWeight: "bold",
+  lineHeight: "45px",
+  paddingLeft: "100%",
+  animation: "scrollText 8s linear infinite",
 };
 
 /* ===== KEYFRAMES ===== */
 const style = document.createElement("style");
 style.innerHTML = `
-@keyframes scroll {
-  0% { transform: translateX(100%); }
+@keyframes scrollText {
+  0% { transform: translateX(0); }
   100% { transform: translateX(-100%); }
 }
 `;
