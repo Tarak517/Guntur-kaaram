@@ -10,7 +10,6 @@ export default function Pipe({
 }) {
   return (
     <>
-      {/* Top pipe */}
       <img
         src={img}
         alt="pipe-top"
@@ -18,12 +17,12 @@ export default function Pipe({
           position: "absolute",
           left: x,
           top: 0,
-          width: width,
+          width,
           height: gapY,
+          objectFit: "cover",
         }}
       />
 
-      {/* Bottom pipe */}
       <img
         src={img}
         alt="pipe-bottom"
@@ -31,8 +30,9 @@ export default function Pipe({
           position: "absolute",
           left: x,
           top: gapY + gapSize,
-          width: width,
+          width,
           height: gameHeight - (gapY + gapSize),
+          objectFit: "cover",
         }}
       />
     </>

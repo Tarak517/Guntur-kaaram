@@ -1,172 +1,191 @@
-import React, { useState, useEffect, useRef } from "react";
-import Bird from "./components/Bird";
+import React, { useEffect, useRef, useState } from "react";
+import Bird, { BIRD_HITBOX } from "./components/Bird";
 import Pipe from "./components/Pipe";
 import Score from "./components/Score";
 
-const GAME_HEIGHT = 800;
-const GAME_WIDTH = 600;
+/* ===== GAME CONFIG ===== */
+const GAME_WIDTH = 360;
+const GAME_HEIGHT = 640;
 
-const GRAVITY = 0.9;
-const JUMP_FORCE = -10;
+const GRAVITY = 0.12;
+const JUMP_FORCE = -3.2;
+const PIPE_SPEED = 1.4;
+
 const PIPE_WIDTH = 80;
-const PIPE_GAP = 350;
+const PIPE_GAP = 260;
 
-function App() {
-  const [birdY, setBirdY] = useState(GAME_HEIGHT / 2);
-  const [velocity, setVelocity] = useState(0);
-  const [pipes, setPipes] = useState([{ x: GAME_WIDTH, gapY: 200 }]);
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [started, setStarted] = useState(false);
-  const [scale, setScale] = useState(1);
+const BIRD_X = 80;
 
+export default function App() {
+  const birdY = useRef(GAME_HEIGHT / 2);
+  const velocity = useRef(0);
+  const pipes = useRef([]);
+  const frameRef = useRef(null);
+  const gameRunning = useRef(false);
+
+  const gameOverAudio = useRef(null);
   const bgMusic = useRef(null);
-  const gameOverMusic = useRef(null);
 
-  const BIRD_IMAGE = "/bird.png";
-  const PIPE_IMAGE = "/obstacle.png";
+  const [renderBirdY, setRenderBirdY] = useState(birdY.current);
+  const [renderPipes, setRenderPipes] = useState([]);
+  const [score, setScore] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
 
-  /* ================= JUMP ================= */
-  const jump = () => {
-    if (!started || gameOver) return;
-    setVelocity(JUMP_FORCE);
-  };
+  const BIRD_IMAGE = process.env.PUBLIC_URL + "/bird.png";
+  const PIPE_IMAGE = process.env.PUBLIC_URL + "/obstacle.png";
 
-  /* ================= KEYBOARD ================= */
+  /* ===== INIT AUDIO ===== */
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.code === "Space") jump();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [started, gameOver]);
-
-  /* ================= MOBILE SCALE ================= */
-  useEffect(() => {
-    const updateScale = () => {
-      const scaleWidth = window.innerWidth / GAME_WIDTH;
-      const scaleHeight = window.innerHeight / GAME_HEIGHT;
-      setScale(Math.min(scaleWidth, scaleHeight));
-    };
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
+    gameOverAudio.current = new Audio(process.env.PUBLIC_URL + "/gameover.mp3");
+    bgMusic.current = new Audio(process.env.PUBLIC_URL + "/background.mp3");
+    bgMusic.current.loop = true;
   }, []);
 
-  /* ================= GAME LOOP ================= */
-  useEffect(() => {
-    if (!started || gameOver) return;
+  /* ===== GAME LOOP ===== */
+  const loop = () => {
+    if (!gameRunning.current) return;
 
-    const loop = setInterval(() => {
-      setVelocity((v) => v + GRAVITY);
+    velocity.current += GRAVITY;
+    birdY.current += velocity.current;
 
-      setBirdY((y) => {
-        const next = y + velocity;
-        return Math.max(0, Math.min(GAME_HEIGHT - 120, next));
+    if (birdY.current < 0 || birdY.current > GAME_HEIGHT - 120) {
+      endGame();
+      return;
+    }
+
+    pipes.current.forEach((p) => (p.x -= PIPE_SPEED));
+
+    if (
+      pipes.current.length === 0 ||
+      pipes.current[pipes.current.length - 1].x < GAME_WIDTH - 200
+    ) {
+      pipes.current.push({
+        x: GAME_WIDTH,
+        gapY: Math.random() * (GAME_HEIGHT - PIPE_GAP - 150) + 75,
+        scored: false,
       });
+    }
 
-      setPipes((prev) => {
-        let next = prev
-          .map((p) => ({ ...p, x: p.x - 4 }))
-          .filter((p) => p.x + PIPE_WIDTH > 0);
+    pipes.current.forEach((p) => {
+      const birdBox = {
+        left: BIRD_X + BIRD_HITBOX.offsetX,
+        right: BIRD_X + BIRD_HITBOX.offsetX + BIRD_HITBOX.width,
+        top: birdY.current + BIRD_HITBOX.offsetY,
+        bottom: birdY.current + BIRD_HITBOX.offsetY + BIRD_HITBOX.height,
+      };
 
-        if (next[next.length - 1].x < GAME_WIDTH - 250) {
-          next.push({
-            x: GAME_WIDTH,
-            gapY: Math.random() * (GAME_HEIGHT - PIPE_GAP),
-          });
-        }
+      const pipeLeft = p.x;
+      const pipeRight = p.x + PIPE_WIDTH;
+      const topPipeBottom = p.gapY;
+      const bottomPipeTop = p.gapY + PIPE_GAP;
 
-        next.forEach((p) => {
-          const birdTop = birdY + 30;
-          const birdBottom = birdY + 90;
-          const birdLeft = 120 + 30;
-          const birdRight = 120 + 90;
+      const padding = 2;
+      if (
+        birdBox.right - padding > pipeLeft &&
+        birdBox.left + padding < pipeRight &&
+        (birdBox.top + padding < topPipeBottom ||
+          birdBox.bottom - padding > bottomPipeTop)
+      ) {
+        endGame();
+      }
 
-          const pipeLeft = p.x;
-          const pipeRight = p.x + PIPE_WIDTH;
-          const pipeTop = p.gapY;
-          const pipeBottom = p.gapY + PIPE_GAP;
+      if (!p.scored && pipeRight < birdBox.left) {
+        p.scored = true;
+        setScore((s) => s + 1);
+      }
+    });
 
-          const hit =
-            birdRight > pipeLeft &&
-            birdLeft < pipeRight &&
-            (birdTop < pipeTop || birdBottom > pipeBottom);
+    pipes.current = pipes.current.filter((p) => p.x + PIPE_WIDTH > 0);
 
-          if (hit) {
-            setGameOver(true);
-            bgMusic.current?.pause();
-            gameOverMusic.current?.play();
-          }
+    setRenderBirdY(birdY.current);
+    setRenderPipes([...pipes.current]);
 
-          if (p.x === 50) setScore((s) => s + 1);
-        });
-
-        return next;
-      });
-    }, 30);
-
-    return () => clearInterval(loop);
-  }, [started, gameOver, velocity, birdY]);
-
-  /* ================= START / RESTART ================= */
-  const startGame = () => {
-    setStarted(true);
-
-    bgMusic.current = new Audio("/background.mp3");
-    bgMusic.current.loop = true;
-    bgMusic.current.volume = 0.4;
-    bgMusic.current.play();
-
-    gameOverMusic.current = new Audio("/gameover.mp3");
-    gameOverMusic.current.volume = 0.8;
+    frameRef.current = requestAnimationFrame(loop);
   };
 
-  const restartGame = () => {
-    gameOverMusic.current?.pause();
-    gameOverMusic.current.currentTime = 0;
+  /* ===== CONTROLS ===== */
+  const jump = () => {
+    if (!started || gameOver) return;
+    velocity.current = JUMP_FORCE;
+  };
 
-    setBirdY(GAME_HEIGHT / 2);
-    setVelocity(0);
-    setPipes([{ x: GAME_WIDTH, gapY: 200 }]);
+  useEffect(() => {
+    const key = (e) => e.code === "Space" && jump();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [started, gameOver]);
+
+  /* ===== GAME STATE ===== */
+  const startGame = () => {
+    birdY.current = GAME_HEIGHT / 2;
+    velocity.current = 0;
+    pipes.current = [];
     setScore(0);
     setGameOver(false);
-    setStarted(false);
+    setStarted(true);
+
+    gameRunning.current = true;
+    frameRef.current = requestAnimationFrame(loop);
+
+    if (bgMusic.current) {
+      bgMusic.current.pause();
+      bgMusic.current.currentTime = 0;
+      bgMusic.current.play().catch((err) =>
+        console.warn("Autoplay blocked. Music will play after interaction.", err)
+      );
+    }
+
+    if (gameOverAudio.current) {
+      gameOverAudio.current.pause();
+      gameOverAudio.current.currentTime = 0;
+    }
   };
 
-  /* ================= UI ================= */
+  const endGame = () => {
+    if (!gameRunning.current) return;
+
+    gameRunning.current = false;
+    cancelAnimationFrame(frameRef.current);
+
+    if (bgMusic.current) bgMusic.current.pause();
+
+    setTimeout(() => {
+      setGameOver(true);
+      if (gameOverAudio.current) {
+        gameOverAudio.current.currentTime = 0;
+        gameOverAudio.current.play().catch((err) =>
+          console.warn("Game over sound error:", err)
+        );
+      }
+    }, 200);
+  };
+
+  /* ===== UI ===== */
   return (
     <div style={outer}>
-      <div
-        style={{
-          ...gameBox,
-          transform: `scale(${scale})`,
-          transformOrigin: "top center",
-        }}
-      >
+      <div style={gameBox}>
         {!started && (
-          <button style={{ ...centerBtn, zIndex: 10 }} onClick={startGame}>
+          <button style={centerBtn} onClick={startGame}>
             Start Game
           </button>
         )}
 
         {gameOver && (
           <>
-            <div style={{ ...gameOverText, zIndex: 20 }}>
-              <h1>😢 Game Over</h1>
+            <div style={gameOverText}>😢 Game Over</div>
+            <div style={marquee}>
+              theerarerareoooo theerarerareoooo theerarerareoooo theerarerareoooo rarerooooooooooo
             </div>
-            <button
-              style={{ ...centerBtn, zIndex: 20 }}
-              onClick={restartGame}
-            >
-              <h1>Start Again</h1>
+            <button style={centerBtn} onClick={startGame}>
+              Play Again
             </button>
           </>
         )}
 
-        <Bird y={birdY} img={BIRD_IMAGE} />
+        <Bird y={renderBirdY} img={BIRD_IMAGE} />
 
-        {pipes.map((p, i) => (
+        {renderPipes.map((p, i) => (
           <Pipe
             key={i}
             x={p.x}
@@ -179,7 +198,7 @@ function App() {
         ))}
 
         {started && !gameOver && (
-          <button onMouseDown={jump} onTouchStart={jump} style={{ ...jumpBtn, zIndex: 9 }}>
+          <button style={jumpBtn} onTouchStart={jump} onMouseDown={jump}>
             ⬆️
           </button>
         )}
@@ -190,9 +209,9 @@ function App() {
   );
 }
 
-/* ================= STYLES ================= */
+/* ===== STYLES ===== */
 const outer = {
-  minHeight: "100vh",
+  height: "100vh",
   background: "#111",
   display: "flex",
   justifyContent: "center",
@@ -214,29 +233,48 @@ const centerBtn = {
   transform: "translate(-50%, -50%)",
   padding: "14px 26px",
   fontSize: "18px",
+  zIndex: 10,
 };
 
 const gameOverText = {
   position: "absolute",
-  bottom: "60px",
+  bottom: "160px",
   width: "100%",
   textAlign: "center",
-  fontSize: "28px",
-  fontWeight: "bold",
-  color: "#ff3333",
+  fontSize: "26px",
+  color: "red",
+  zIndex: 10,
 };
 
 const jumpBtn = {
   position: "absolute",
-  bottom: "30px",
-  right: "30px",
+  bottom: "25px",
+  right: "25px",
   width: "70px",
   height: "70px",
   borderRadius: "50%",
-  fontSize: "28px",
+  fontSize: "30px",
   border: "none",
   background: "#ffcc00",
-  cursor: "pointer",
+  zIndex: 5,
 };
 
-export default App;
+const marquee = {
+  position: "absolute",
+  bottom: "120px",
+  whiteSpace: "nowrap",
+  fontSize: "22px",
+  color: "#fff",
+  animation: "scroll 8s linear infinite",
+  zIndex: 10,
+};
+
+/* ===== KEYFRAMES ===== */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes scroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+`;
+document.head.appendChild(style);
