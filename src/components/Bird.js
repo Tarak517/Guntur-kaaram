@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import Bird from "./components/Bird";
 import Pipe from "./components/Pipe";
 import Score from "./components/Score";
-
+import GameOver from "./GameOver";
 const GAME_HEIGHT = 800;
 const GAME_WIDTH = 600;
 
 const GRAVITY = 0.9;
 const JUMP_FORCE = -10;
-const PIPE_WIDTH = 80;
+const PIPE_WIDTH = 80; // shrink to match visible pipe
 const PIPE_GAP = 350;
 
 function App() {
@@ -18,7 +18,6 @@ function App() {
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
-  const [scale, setScale] = useState(1);
 
   const bgMusic = useRef(null);
   const gameOverMusic = useRef(null);
@@ -41,18 +40,6 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [started, gameOver]);
 
-  /* ================= MOBILE SCALE ================= */
-  useEffect(() => {
-    const updateScale = () => {
-      const scaleWidth = window.innerWidth / GAME_WIDTH;
-      const scaleHeight = window.innerHeight / GAME_HEIGHT;
-      setScale(Math.min(scaleWidth, scaleHeight));
-    };
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
-  }, []);
-
   /* ================= GAME LOOP ================= */
   useEffect(() => {
     if (!started || gameOver) return;
@@ -62,7 +49,7 @@ function App() {
 
       setBirdY((y) => {
         const next = y + velocity;
-        return Math.max(0, Math.min(GAME_HEIGHT - 120, next));
+        return Math.max(0, Math.min(GAME_HEIGHT - 120, next)); // bird height 120
       });
 
       setPipes((prev) => {
@@ -70,6 +57,7 @@ function App() {
           .map((p) => ({ ...p, x: p.x - 4 }))
           .filter((p) => p.x + PIPE_WIDTH > 0);
 
+        // Add new pipe
         if (next[next.length - 1].x < GAME_WIDTH - 250) {
           next.push({
             x: GAME_WIDTH,
@@ -77,11 +65,12 @@ function App() {
           });
         }
 
+        // Collision detection
         next.forEach((p) => {
-          const birdTop = birdY + 30;
-          const birdBottom = birdY + 90;
-          const birdLeft = 120 + 30;
-          const birdRight = 120 + 90;
+          const birdTop = birdY + 30;     // shrink hitbox for top
+          const birdBottom = birdY + 90;  // shrink hitbox for bottom
+          const birdLeft = 120 + 30;      // shrink hitbox left
+          const birdRight = 120 + 90;     // shrink hitbox right
 
           const pipeLeft = p.x;
           const pipeRight = p.x + PIPE_WIDTH;
@@ -137,13 +126,7 @@ function App() {
   /* ================= UI ================= */
   return (
     <div style={outer}>
-      <div
-        style={{
-          ...gameBox,
-          transform: `scale(${scale})`,
-          transformOrigin: "top center",
-        }}
-      >
+      <div style={gameBox}>
         {!started && (
           <button style={{ ...centerBtn, zIndex: 10 }} onClick={startGame}>
             Start Game
@@ -178,8 +161,13 @@ function App() {
           />
         ))}
 
+        {/* Jump Button */}
         {started && !gameOver && (
-          <button onMouseDown={jump} onTouchStart={jump} style={{ ...jumpBtn, zIndex: 9 }}>
+          <button
+            onMouseDown={jump}
+            onTouchStart={jump}
+            style={{ ...jumpBtn, zIndex: 9 }}
+          >
             ⬆️
           </button>
         )}
