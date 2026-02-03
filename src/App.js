@@ -164,7 +164,7 @@ export default function App() {
         {gameOver && (
           <div style={marqueeWrapper}>
             <div style={marquee}>
-              #Theraarareooo &nbsp; Thereerareooo &nbsp; Tharararararaooooo &nbsp; oooooo#
+              #TEERAARAREOO &nbsp; TEERAARAREOO &nbsp; THARARARARARAOOOOO &nbsp; THARARAOOOOO &nbsp; OOOOOOOO#
             </div>
           </div>
         )}
@@ -177,13 +177,13 @@ export default function App() {
 
         {!started && (
           <button style={centerBtn} onClick={startGame}>
-            Start Journey
+            Start fair and lovely
           </button>
         )}
 
         {gameOver && (
           <button style={centerBtn} onClick={startGame}>
-            Start again
+            Nee life oo miracle raa babu
           </button>
         )}
 
@@ -251,10 +251,10 @@ const jumpBtn = {
   position: "absolute",
   bottom: "25px",
   right: "25px",
-  width: "70px",
-  height: "70px",
-  borderRadius: "50%",
-  fontSize: "30px",
+  width: "80px",
+  height: "80px",
+  borderRadius: "60%",
+  fontSize: "40px",
   background: "#ffcc00",
   border: "none",
   zIndex: 30,
@@ -270,13 +270,12 @@ const destination = {
   pointerEvents: "none",
 };
 
-/* 🔴 RED STRIP – MOVED UP */
+/* RED STRIP – MOVED UP */
 const marqueeWrapper = {
   position: "absolute",
-  bottom: "70px", // moved upward
+  bottom: "60px", 
   width: "100%",
   height: "45px",
-  background: "rgba(200, 0, 0, 0.65)",
   overflow: "hidden",
   zIndex: 35,
 };
